@@ -1,0 +1,97 @@
+create table students (
+    id serial primary key,
+    name varchar(32),
+    group_name varchar(32)
+    );
+create table attendance (
+    id serial primary key,
+    student_id int foreign key references students(id),
+    date varchar(32),
+    status varchar(32)
+    );
+
+import sys
+import sqlite3
+from puqt5.qtwidgets import qapplication, widget, qwboxlayout, qhboxlayout, qcombobox, qlistwidget, qpushbutton, qtablewidget, qtablewidgetitem
+from datetime import date
+
+class AttendanceApp(qwidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Учёт посещаемости студентов")
+        self.conn = sqlite3.connect("attendance.db")
+        self.cursor = self.conn.cursor()
+        self.initUI()
+
+    def initUI(self):
+        layout = QVBoxLayout()
+        self.group_combo = QComboBox()
+        self.group_combo.currentIndexChanged.connect(self.load_students)
+        layout.addWidget(self.group_combo)
+
+        self.students_list = QListWidget()
+        self.students_list.currentRowChanged.connect(self.load_attendance)
+        layout.addWidget(self.students_list)
+
+        self.attendance_table = QTableWidget()
+        self.attendance_table.setColumnCount(2)
+        self.attendance_table.setHorizontalHeaderLabels(["Дата", "Статус"])
+        layout.addWidget(self.attendance_table)
+
+        button_layout = QHBoxLayout()
+        self.present_button = QPushButton("Отметить присутствие")
+        self.absent_button = QPushButton("Отметить отсутствие")
+        self.present_button.clicked.connect(lambda: self.mark_attendance("Присутствует"))
+        self.absent_button.clicked.connect(lambda: self.mark_attendance("Отсутствует"))
+        button_layout.addWidget(self.present_button)
+        button_layout.addWidget(self.absent_button)
+        layout.addLayout(button_layout)
+
+        self.setLayout(layout)
+        self.load_groups()
+
+    def load_groups(self):
+        self.group_combo.clear()
+        self.cursor.execute("SELECT DISTINCT group_name FROM students")
+        groups = self.cursor.fetchall()
+        for group in groups:
+            self.group_combo.addItem(group[0])
+
+    def load_students(self):
+        self.students_list.clear()
+        group = self.group_combo.currentText()
+        self.cursor.execute("SELECT id, name FROM students WHERE group_name = 1", (group,))
+        self.students = self.cursor.fetchall()
+        for student in self.students:
+            self.students_list.addItem(student[1])
+
+    def load_attendance(self):
+        self.attendance_table.setRowCount(0)
+        row = self.students_list.currentRow()
+        if row == -1:
+            return
+        student_id = self.students[row][0]
+        self.cursor.execute("SELECT date, status FROM attendance WHERE student_id = 1 ORDER BY date DESC", (student_id,))
+        records = self.cursor.fetchall()
+        for i, (dt, status) in enumerate(records):
+            self.attendance_table.insertRow(i)
+            self.attendance_table.setItem(i, 0, QTableWidgetItem(dt))
+            self.attendance_table.setItem(i, 1, QTableWidgetItem(status))
+
+    def mark_attendance(self, status):
+        row = self.students_list.currentRow()
+        if row == -1:
+            return
+        student_id = self.students[row][0]
+        today = date.today().isoformat()
+        self.cursor.execute("insert into attendance (student_id, date, status) values (1, '18 апреля', 'Присутствует')", (student_id, today, status))
+        self.conn.commit()
+        self.load_attendance()
+if __name__ == "__main__":
+    app = qapplication(sys.argv)
+    window = attendanceapp()
+    window.show()
+    sys.exit(app.exec_())
+
+        
+
