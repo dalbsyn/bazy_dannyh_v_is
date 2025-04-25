@@ -1,0 +1,84 @@
+from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QListWidget, 
+                             QTableWidget, QTableWidgetItem, QPushButton, QLabel)
+from PyQt5.QtCore import Qt
+import sqlite3
+
+class LibraryApp(QWidget):
+    def _init_(self):
+        super()._init_()
+        self.setWindowTitle("Управление библиотекой")
+        self.setGeometry(300, 300, 600, 400)
+        
+        self.conn = sqlite3.connect("library.db")
+        self.cursor = self.conn.cursor()
+        
+        layout = QVBoxLayout()
+        
+        self.book_list = QListWidget()
+        self.load_books()
+        layout.addWidget(QLabel("Доступные книги:"))
+        layout.addWidget(self.book_list)
+        
+        self.loans_table = QTableWidget()
+        self.loans_table.setColumnCount(4)
+        self.loans_table.setHorizontalHeaderLabels(["ID выдачи", "Книга", "Читатель", "Вернуть до"])
+        self.load_loans()
+        layout.addWidget(QLabel("Текущие выдачи:"))
+        layout.addWidget(self.loans_table)
+        
+        self.btn_issue = QPushButton("Выдать книгу")
+        self.btn_return = QPushButton("Принять возврат")
+        self.btn_issue.clicked.connect(self.issue_book)
+        self.btn_return.clicked.connect(self.return_book)
+        layout.addWidget(self.btn_issue)
+        layout.addWidget(self.btn_return)
+        
+        self.setLayout(layout)
+    
+    def load_books(self):
+        """Загрузка списка книг из БД"""
+        self.book_list.clear()
+        self.cursor.execute("SELECT id, title, author FROM books")
+        for book in self.cursor.fetchall():
+            self.book_list.addItem(f"{book[0]}: {book[1]} ({book[2]})")
+    
+    def load_loans(self):
+        """Загрузка текущих выданных книг"""
+        self.loans_table.setRowCount(0)
+        self.cursor.execute("""
+            SELECT loans.id, books.title, loans.borrower, loans.date_due 
+            FROM loans JOIN books ON loans.book_id = books.id
+        """)
+        for row, loan in enumerate(self.cursor.fetchall()):
+            self.loans_table.insertRow(row)
+            for col, data in enumerate(loan):
+                self.loans_table.setItem(row, col, QTableWidgetItem(str(data)))
+    
+    def issue_book(self):
+        """Выдача книги"""
+        selected = self.book_list.currentItem()
+        if selected:
+            book_id = int(selected.text().split(":")[0])
+            borrower, ok = QInputDialog.getText(self, "Выдача книги", "Имя читателя:")
+            if ok and borrower:
+                self.cursor.execute(
+                    "INSERT INTO loans (book_id, borrower, date_issued, date_due) VALUES (?, ?, date('now'), date('now', '+14 days'))",
+                    (book_id, borrower)
+                )
+                self.conn.commit()
+                self.load_loans()
+    
+    def return_book(self):
+        """Возврат книги"""
+        selected_row = self.loans_table.currentRow()
+        if selected_row >= 0:
+            loan_id = int(self.loans_table.item(selected_row, 0).text())
+            self.cursor.execute("DELETE FROM loans WHERE id = ?", (loan_id,))
+            self.conn.commit()
+            self.load_loans()
+
+if _name_ == "_main_":
+    app = QApplication([])
+    window = LibraryApp()
+    window.show()
+    app.exec_()

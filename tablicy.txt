@@ -1,0 +1,27 @@
+create table books(
+    id serial primary key,
+    title varchar(32),
+    author varchar(32),
+    genre varchar(16)
+);
+
+create table loans(
+    id serial primary key,
+    book_id int,
+    borrower varchar(32),
+    date_issued date,
+    date_due date
+    foreign key(book_id) references books(id)
+);
+
+insert into books(title, author, genre) values
+('ыщыщыщ', 'Кривошеин Р.Д.', 'Horror'),
+('хыхыхы', 'Петросян Х.А.', 'Comedy'),
+('хныкхнык', 'Грустн Г.Л.','Drama');
+
+insert into loans(book_id, borrower, date_issued, date_due) values
+(2, 'Силищев Н.А.', 2025-04-23, 2025-09-23),
+(3, 'Мартынюк Р.Ю.', 2025-04-24, 2025-09-24),
+(1, 'Первый В.Т.', 2025-04-25, 2025-09-25);
+
+

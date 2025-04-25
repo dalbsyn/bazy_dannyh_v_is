@@ -1,0 +1,12 @@
+--первый запрос
+SELECT loans.id, books.title, loans.borrower, loans.date_due 
+FROM loans JOIN books ON loans.book_id = books.id;
+
+--второй запрос
+INSERT INTO loans (book_id, borrower, date_issued, date_due) 
+VALUES (1, 'Примеров П.П.', date('now'), date('now', '+182 days'));
+
+--третий запрос
+SELECT loans.id, books.title, loans.borrower, loans.date_due 
+FROM loans JOIN books ON loans.book_id = books.id;
+
